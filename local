@@ -74,66 +74,56 @@ getgenv().AutoJuggernaut = false
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GamemodeRemotes = ReplicatedStorage:WaitForChild("GamemodeRemotes")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
 
-local Toggle = Tab1:CreateToggle({
-    Name = "Autokill",
-    CurrentValue = false,
-    Flag = "Autokill",
-    Callback = function(state)
-        getgenv().X7MX = state
-        if state then
-            workspace.Gravity = -2
-            if LocalHumanoid then
-                LocalHumanoid:SetStateEnabled(15, false)
-            end
-        else
-            workspace.Gravity = 196.2
-            if LocalHumanoid then
-                LocalHumanoid:SetStateEnabled(15, true)
+local teleportDelay = 5
+local offsetX, offsetY, offsetZ = 0, 0, 0
+local TPTweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+
+local function characterAdded(Character)
+    if typeof(Character) ~= "Instance" then return end
+    LocalCharacter = Character
+    LocalRootPart = Character:WaitForChild("HumanoidRootPart", 3)
+    LocalHumanoid = Character:WaitForChild("Humanoid", 3)
+end
+characterAdded(LocalPlayer.Character)
+LocalPlayer.CharacterAdded:Connect(characterAdded)
+
+local function getClosestPlayer()
+    local Closest, MaxDistance
+    for _, Player in ipairs(Players:GetPlayers()) do
+        if Player ~= LocalPlayer and LocalRootPart then
+            local Character = Player.Character
+            local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
+            local Humanoid = RootPart and Character:FindFirstChild("Humanoid")
+
+            if Humanoid and Humanoid.Health > 0 then
+                local Distance = (LocalRootPart.Position - RootPart.Position).Magnitude
+                if not Closest or Distance < MaxDistance then
+                    Closest = Player
+                    MaxDistance = Distance
+                end
             end
         end
-        print("Autokill state updated to:", state)
-    end,
-})
-
-local AutoInfectionToggle = Tab1:CreateToggle({
-    Name = "Auto Infection",
-    CurrentValue = false,
-    Flag = "AutoInfection",
-    Callback = function(state)
-        getgenv().AutoInfection = state
-        print("Auto Infection mode:", state)
-    end,
-})
-
-local AutoJuggernautToggle = Tab1:CreateToggle({
-    Name = "Auto Juggernaut",
-    CurrentValue = false,
-    Flag = "AutoJuggernaut",
-    Callback = function(state)
-        getgenv().AutoJuggernaut = state
-        print("Auto Juggernaut mode:", state)
-    end,
-})
-
-if shared.zorautofarm then shared.zorautofarm:Disconnect(); end
-
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local Backpack = LocalPlayer.Backpack
-local LocalCharacter = LocalPlayer.Character
-local LocalRootPart
-local LocalHumanoid
-
-do
-    local function characterAdded(Character)
-        if typeof(Character) ~= "Instance" then return end
-        LocalCharacter = Character
-        LocalRootPart = Character:WaitForChild("HumanoidRootPart")
-        LocalHumanoid = Character:WaitForChild("Humanoid")
     end
-    characterAdded(LocalCharacter)
-    LocalPlayer.CharacterAdded:Connect(characterAdded)
+    return Closest
+end
+
+local function teleportToTarget(Target)
+    if Target and LocalRootPart then
+        local TargetCharacter = Target.Character
+        local TargetRootPart = TargetCharacter and TargetCharacter:FindFirstChild("HumanoidRootPart")
+        
+        if TargetRootPart then
+            print("[Autokill] Teleporting to:", Target.Name)
+            local TargetCFrame = TargetRootPart.CFrame * CFrame.new(offsetX, offsetY, offsetZ)
+            TweenService:Create(LocalRootPart, TPTweenInfo, {CFrame = TargetCFrame}):Play()
+        else
+            print("[Autokill] ERROR: No HumanoidRootPart found for", Target.Name)
+        end
+    end
 end
 
 local function handleSpecialModes()
@@ -149,29 +139,40 @@ end
 shared.zorautofarm = game:GetService("RunService").Heartbeat:Connect(function()
     if getgenv().X7MX then
         handleSpecialModes()
+        local Target = getClosestPlayer()
+        teleportToTarget(Target)
     end
 end)
 
-local Player = game.Players.LocalPlayer
+local Toggle = Tab1:CreateToggle({
+    Name = "Autokill",
+    CurrentValue = false,
+    Flag = "Autokill",
+    Callback = function(state)
+        getgenv().X7MX = state
+        print("Autokill state:", state)
+    end,
+})
 
-local cooldown = false
+local AutoInfectionToggle = Tab1:CreateToggle({
+    Name = "Auto Infection1",
+    CurrentValue = false,
+    Flag = "AutoInfection",
+    Callback = function(state)
+        getgenv().AutoInfection = state
+        print("Auto Infection mode:", state)
+    end,
+})
 
-task.spawn(function()
-    game:GetService("RunService").Stepped:Connect(function()
-        if Player.Character and not cooldown and game.Players.LocalPlayer.PlayerGui.ScreenGui.UI.Target.Visible == true and getgenv().X7MX == true then
-            if Player:DistanceFromCharacter(game.Workspace[game.Players.LocalPlayer.PlayerGui.ScreenGui.UI.Target.TargetText.Text].Head.Position) <= 6.5 then
-                Player.PlayerScripts.localknifehandler.HitCheck:Fire(game.Workspace[game.Players.LocalPlayer.PlayerGui.ScreenGui.UI.Target.TargetText.Text])
-                coroutine.wrap(function()
-                    cooldown = true
-                    task.wait(0.8)
-                    cooldown = false
-                end)()
-            else
-                task.wait()
-            end
-        end
-    end)
-end)
+local AutoJuggernautToggle = Tab1:CreateToggle({
+    Name = "Auto Juggernautxx",
+    CurrentValue = false,
+    Flag = "AutoJuggernaut",
+    Callback = function(state)
+        getgenv().AutoJuggernaut = state
+        print("Auto Juggernaut mode:", state)
+    end,
+})
 
 local Slider = Tab1:CreateSlider({
     Name = "Teleport Delay",
@@ -181,8 +182,8 @@ local Slider = Tab1:CreateSlider({
     CurrentValue = 5,
     Flag = "Teleport Delay",
     Callback = function(Value)
-        print("Teleport Delay set to:", Value)
         teleportDelay = Value
+        print("Teleport Delay set to:", Value)
     end,
 })
 
@@ -194,8 +195,8 @@ local Slider = Tab1:CreateSlider({
     CurrentValue = 0,
     Flag = "X Offset",
     Callback = function(Value)
-        print("X Offset set to:", Value)
         offsetX = Value
+        print("X Offset set to:", Value)
     end,
 })
 
@@ -207,8 +208,8 @@ local Slider = Tab1:CreateSlider({
     CurrentValue = 0,
     Flag = "Y Offset",
     Callback = function(Value)
-        print("Y Offset set to:", Value)
         offsetY = Value
+        print("Y Offset set to:", Value)
     end,
 })
 
@@ -220,10 +221,11 @@ local Slider = Tab1:CreateSlider({
     CurrentValue = 0,
     Flag = "Z Offset",
     Callback = function(Value)
-        print("Z Offset set to:", Value)
         offsetZ = Value
+        print("Z Offset set to:", Value)
     end,
 })
+
 
 
 ----
