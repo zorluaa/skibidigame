@@ -59,3 +59,4 @@ end
 -- Start the stabbing and teleporting
 spawn(stabContinuously)
 spawn(teleportToClosestPlayer)
+
