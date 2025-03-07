@@ -2,7 +2,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local localPlayer = Players.LocalPlayer
 local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-local knife = character:WaitForChild("Knife")
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
 -- Function to stab continuously
 local function stabContinuously()
@@ -11,12 +11,14 @@ local function stabContinuously()
             [1] = "Stab"
         }
         -- Fire the stabbing event
-        knife.WeaponEvent:FireServer(unpack(args))
+        if character:FindFirstChild("Knife") then
+            character.Knife.WeaponEvent:FireServer(unpack(args))
+        end
         wait(0.1)  -- Adjust the stab speed (how fast the stabbing happens)
     end
 end
 
--- Function to teleport to the closest player with a tween
+-- Function to teleport to the closest player using a tween
 local function teleportToClosestPlayer()
     while true do
         local closestPlayer = nil
@@ -26,7 +28,7 @@ local function teleportToClosestPlayer()
         for _, player in pairs(Players:GetPlayers()) do
             if player ~= localPlayer and player.Character then
                 local playerCharacter = player.Character
-                local distance = (character.HumanoidRootPart.Position - playerCharacter.HumanoidRootPart.Position).Magnitude
+                local distance = (humanoidRootPart.Position - playerCharacter.HumanoidRootPart.Position).Magnitude
                 
                 if distance < shortestDistance then
                     closestPlayer = player
@@ -42,14 +44,13 @@ local function teleportToClosestPlayer()
             local tweenInfo = TweenInfo.new(
                 1, -- Duration of the tween
                 Enum.EasingStyle.Linear, -- Easing style
-                Enum.EasingDirection.Out, -- Easing direction
-                -1, -- Repeat indefinitely
-                true -- Reverses the tween
+                Enum.EasingDirection.Out -- Easing direction
             )
             
             local goal = {Position = targetPosition}
-            local tween = TweenService:Create(character.HumanoidRootPart, tweenInfo, goal)
+            local tween = TweenService:Create(humanoidRootPart, tweenInfo, goal)
             tween:Play()
+            tween.Completed:Wait()  -- Wait for the tween to complete before continuing the loop
         end
         wait(1)  -- Adjust how often the teleportation happens (1 second interval)
     end
