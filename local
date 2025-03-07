@@ -69,80 +69,6 @@ Rayfield:Notify({
 -- Toggles
 
 getgenv().X7MX = false
-getgenv().AutoInfection = false
-getgenv().AutoJuggernaut = false
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local GamemodeRemotes = ReplicatedStorage:WaitForChild("GamemodeRemotes")
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local LocalPlayer = Players.LocalPlayer
-
-local teleportDelay = 5
-local offsetX, offsetY, offsetZ = 0, 0, 0
-local TPTweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-
-local function characterAdded(Character)
-    if typeof(Character) ~= "Instance" then return end
-    LocalCharacter = Character
-    LocalRootPart = Character:WaitForChild("HumanoidRootPart", 3)
-    LocalHumanoid = Character:WaitForChild("Humanoid", 3)
-end
-characterAdded(LocalPlayer.Character)
-LocalPlayer.CharacterAdded:Connect(characterAdded)
-
-local function getClosestPlayer()
-    local Closest, MaxDistance
-    for _, Player in ipairs(Players:GetPlayers()) do
-        if Player ~= LocalPlayer and LocalRootPart then
-            local Character = Player.Character
-            local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
-            local Humanoid = RootPart and Character:FindFirstChild("Humanoid")
-
-            if Humanoid and Humanoid.Health > 0 then
-                local Distance = (LocalRootPart.Position - RootPart.Position).Magnitude
-                if not Closest or Distance < MaxDistance then
-                    Closest = Player
-                    MaxDistance = Distance
-                end
-            end
-        end
-    end
-    return Closest
-end
-
-local function teleportToTarget(Target)
-    if Target and LocalRootPart then
-        local TargetCharacter = Target.Character
-        local TargetRootPart = TargetCharacter and TargetCharacter:FindFirstChild("HumanoidRootPart")
-        
-        if TargetRootPart then
-            print("[Autokill] Teleporting to:", Target.Name)
-            local TargetCFrame = TargetRootPart.CFrame * CFrame.new(offsetX, offsetY, offsetZ)
-            TweenService:Create(LocalRootPart, TPTweenInfo, {CFrame = TargetCFrame}):Play()
-        else
-            print("[Autokill] ERROR: No HumanoidRootPart found for", Target.Name)
-        end
-    end
-end
-
-local function handleSpecialModes()
-    if getgenv().AutoInfection then
-        print("Auto Infection Mode Activated")
-        GamemodeRemotes.InfectionKill:FireServer()
-    elseif getgenv().AutoJuggernaut then
-        print("Auto Juggernaut Mode Activated")
-        GamemodeRemotes.JuggernautKill:FireServer()
-    end
-end
-
-shared.zorautofarm = game:GetService("RunService").Heartbeat:Connect(function()
-    if getgenv().X7MX then
-        handleSpecialModes()
-        local Target = getClosestPlayer()
-        teleportToTarget(Target)
-    end
-end)
 
 local Toggle = Tab1:CreateToggle({
     Name = "Autokill",
@@ -150,29 +76,151 @@ local Toggle = Tab1:CreateToggle({
     Flag = "Autokill",
     Callback = function(state)
         getgenv().X7MX = state
-        print("Autokill state:", state)
+        if state then
+            workspace.Gravity = -2
+            if LocalHumanoid then
+                LocalHumanoid:SetStateEnabled(15, false)
+            end
+        else
+            workspace.Gravity = 196.2
+            if LocalHumanoid then
+                LocalHumanoid:SetStateEnabled(15, true)
+            end
+        end
+        print("Autofarm state updated to:", state)
     end,
 })
 
-local AutoInfectionToggle = Tab1:CreateToggle({
-    Name = "Auto Infection1",
-    CurrentValue = false,
-    Flag = "AutoInfection",
-    Callback = function(state)
-        getgenv().AutoInfection = state
-        print("Auto Infection mode:", state)
-    end,
-})
+if shared.zorautofarm then shared.zorautofarm:Disconnect(); end
 
-local AutoJuggernautToggle = Tab1:CreateToggle({
-    Name = "Auto Juggernautxx",
-    CurrentValue = false,
-    Flag = "AutoJuggernaut",
-    Callback = function(state)
-        getgenv().AutoJuggernaut = state
-        print("Auto Juggernaut mode:", state)
-    end,
-})
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Backpack = LocalPlayer.Backpack
+local LocalCharacter = LocalPlayer.Character
+local LocalRootPart
+local LocalHumanoid
+
+do
+    local function characterAdded(Character)
+        if typeof(Character) ~= "Instance" then return end
+        LocalCharacter = Character
+        LocalRootPart = Character:WaitForChild("HumanoidRootPart")
+        LocalHumanoid = Character:WaitForChild("Humanoid")
+    end
+    characterAdded(LocalCharacter)
+    LocalPlayer.CharacterAdded:Connect(characterAdded)
+end
+
+local UI = LocalPlayer:WaitForChild("PlayerGui"):WaitForChild("ScreenGui"):WaitForChild("UI")
+local TargetFrame = UI.Target
+local TargetVisible = TargetFrame.Visible
+local TargetText = TargetFrame.TargetText
+local Target = TargetVisible and Players:FindFirstChild(TargetText.Text)
+local TargetCharacter
+local TargetRootPart
+
+TargetFrame.Changed:Connect(function()
+    TargetVisible = TargetFrame.Visible
+end)
+TargetText.Changed:Connect(function()
+    Target = Players:FindFirstChild(TargetText.Text)
+end)
+
+local VotePad = workspace.Lobby.VoteStation.pad3.Position
+local function getClosestPlayer()
+    local Closest
+    local MaxDistance
+
+    for I, Player in next, Players:GetPlayers() do
+        if Player ~= LocalPlayer and LocalRootPart then
+            local Character = workspace:FindFirstChild(Player.Name)
+            local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
+            local Humanoid = RootPart and Character:FindFirstChild("Humanoid")
+
+            if Humanoid and Humanoid.Health > 0 then
+                local Distance = (VotePad - RootPart.Position).Magnitude
+                if Distance > 300 then
+                    Distance = (LocalRootPart.Position - RootPart.Position).Magnitude
+                    if Closest then
+                        if Distance < MaxDistance then
+                            Closest = Player
+                            MaxDistance = Distance
+                        end
+                    else
+                        Closest = Player
+                        MaxDistance = Distance
+                    end
+                end
+            end
+        end
+    end
+
+    return Closest, MaxDistance
+end
+
+local ClosestPlayer
+local ClosestPlayerCharacter
+local ClosestPlayerRootPart
+
+local HitCheckCooldown = false
+local HitCheck = LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("localknifehandler"):WaitForChild("HitCheck")
+local ThrowKnife = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("ThrowKnife")
+
+local ThrowCooldown = false
+local ThrowCFrame = CFrame.new(0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+
+local TPTweenInfo = TweenInfo.new(0, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+local TweenService = game:GetService("TweenService")
+
+local teleportDelay = 5 
+local offsetX = 0
+local offsetY = 0
+local offsetZ = 0
+
+shared.zorautofarm = game:GetService("RunService").Heartbeat:Connect(function()
+    if getgenv().X7MX then
+        ClosestPlayer = getClosestPlayer()
+        ClosestPlayerCharacter = ClosestPlayer and workspace:FindFirstChild(ClosestPlayer.Name)
+        ClosestPlayerRootPart = ClosestPlayerCharacter and ClosestPlayerCharacter:FindFirstChild("HumanoidRootPart")
+        
+        if TargetVisible and Target and LocalCharacter and LocalRootPart and LocalHumanoid and getgenv().X7MX == true then
+            TargetCharacter = workspace:FindFirstChild(Target.Name)
+            TargetRootPart = TargetCharacter and TargetCharacter:FindFirstChild("HumanoidRootPart")
+
+            task.wait(teleportDelay)
+            local TargetCFrame = TargetRootPart.CFrame * CFrame.new(offsetX, offsetY, offsetZ)
+            TweenService:Create(
+                LocalRootPart,
+                TPTweenInfo,
+                {CFrame = TargetCFrame}
+            ):Play()
+
+            workspace.Gravity = -2
+            LocalHumanoid:SetStateEnabled(15, false)
+        end
+    end
+end)
+
+local Player = game.Players.LocalPlayer
+
+local cooldown = false
+
+task.spawn(function()
+    game:GetService("RunService").Stepped:Connect(function()
+        if Player.Character and not cooldown and game.Players.LocalPlayer.PlayerGui.ScreenGui.UI.Target.Visible == true and getgenv().X7MX == true then
+            if Player:DistanceFromCharacter(game.Workspace[game.Players.LocalPlayer.PlayerGui.ScreenGui.UI.Target.TargetText.Text].Head.Position) <= 6.5 then
+                Player.PlayerScripts.localknifehandler.HitCheck:Fire(game.Workspace[game.Players.LocalPlayer.PlayerGui.ScreenGui.UI.Target.TargetText.Text])
+                coroutine.wrap(function()
+                    cooldown = true
+                    task.wait(0.8)
+                    cooldown = false
+                end)()
+            else
+                task.wait()
+            end
+        end
+    end)
+end)
 
 local Slider = Tab1:CreateSlider({
     Name = "Teleport Delay",
@@ -182,8 +230,8 @@ local Slider = Tab1:CreateSlider({
     CurrentValue = 5,
     Flag = "Teleport Delay",
     Callback = function(Value)
-        teleportDelay = Value
         print("Teleport Delay set to:", Value)
+        teleportDelay = Value
     end,
 })
 
@@ -195,8 +243,8 @@ local Slider = Tab1:CreateSlider({
     CurrentValue = 0,
     Flag = "X Offset",
     Callback = function(Value)
-        offsetX = Value
         print("X Offset set to:", Value)
+        offsetX = Value
     end,
 })
 
@@ -208,8 +256,8 @@ local Slider = Tab1:CreateSlider({
     CurrentValue = 0,
     Flag = "Y Offset",
     Callback = function(Value)
-        offsetY = Value
         print("Y Offset set to:", Value)
+        offsetY = Value
     end,
 })
 
@@ -221,10 +269,39 @@ local Slider = Tab1:CreateSlider({
     CurrentValue = 0,
     Flag = "Z Offset",
     Callback = function(Value)
-        offsetZ = Value
         print("Z Offset set to:", Value)
+        offsetZ = Value
     end,
 })
+
+----
+local Addons = Tab1:CreateSection("Autofarm Addons")
+
+local function handleMapRemoval(toggleState)
+    if toggleState then
+        if game.Workspace:FindFirstChild("GameMap") then
+            game.Workspace.GameMap:Destroy()
+        end
+    end
+end
+
+local Toggle = Tab1:CreateToggle({
+    Name = "Destroy Map",
+    CurrentValue = false,
+    Flag = "Destroy Map", 
+    Callback = function(Value)
+        shared.toggle = Value
+        print(shared.toggle)
+        handleMapRemoval(shared.toggle)
+    end,
+})
+
+task.spawn(function()
+    game:GetService("RunService").Stepped:Connect(function()
+        handleMapRemoval(shared.toggle)
+    end)
+end)
+
 
 
 
@@ -1329,25 +1406,31 @@ local Button = Tab6:CreateButton({
  local running = false
 
  local Toggle = Tab1:CreateToggle({
-    Name = "Auto Claim Battle Pass",
-    CurrentValue = false,
-    Callback = function(Value)
-       running = Value
-       while running do
-          local args = {
-             [1] = 1
-          }
+     Name = "Auto Claim Battle Pass",
+     CurrentValue = false,
+     Callback = function(Value)
+         running = Value
+         local tiers = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10} -- All tiers from 1 to 10
  
-          local remote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CompRemotes"):FindFirstChild("RequestTier")
-          if remote then
-             remote:FireServer(unpack(args))
-          else
-             warn("RequestTier remote not found!")
-          end
+         while running do
+             for _, tier in ipairs(tiers) do
+                 -- Set the argument dynamically for each tier
+                 local args = { tier }
  
-          task.wait(1) -- Adjust delay to prevent excessive requests
-       end
-    end,
+                 local remote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CompRemotes"):FindFirstChild("RequestTier")
+                 if remote then
+                     remote:FireServer(unpack(args))
+                     print("Claiming Tier: " .. tier)
+                 else
+                     warn("RequestTier remote not found!")
+                 end
+ 
+                 -- Wait before claiming the next tier
+                 task.wait(1) -- Adjust delay to prevent excessive requests
+             end
+             break -- Stop after claiming all tiers
+         end
+     end,
  })
  
 
