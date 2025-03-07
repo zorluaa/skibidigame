@@ -1,1 +1,60 @@
-print("hi")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local localPlayer = Players.LocalPlayer
+local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+local knife = character:WaitForChild("Knife")
+
+-- Function to stab continuously
+local function stabContinuously()
+    while true do
+        local args = {
+            [1] = "Stab"
+        }
+        -- Fire the stabbing event
+        knife.WeaponEvent:FireServer(unpack(args))
+        wait(0.1)  -- Adjust the stab speed (how fast the stabbing happens)
+    end
+end
+
+-- Function to teleport to the closest player with a tween
+local function teleportToClosestPlayer()
+    while true do
+        local closestPlayer = nil
+        local shortestDistance = math.huge  -- Start with a very large number
+        
+        -- Find the closest player
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= localPlayer and player.Character then
+                local playerCharacter = player.Character
+                local distance = (character.HumanoidRootPart.Position - playerCharacter.HumanoidRootPart.Position).Magnitude
+                
+                if distance < shortestDistance then
+                    closestPlayer = player
+                    shortestDistance = distance
+                end
+            end
+        end
+        
+        if closestPlayer then
+            local targetPosition = closestPlayer.Character.HumanoidRootPart.Position
+            
+            -- Create a tween for smooth teleport
+            local tweenInfo = TweenInfo.new(
+                1, -- Duration of the tween
+                Enum.EasingStyle.Linear, -- Easing style
+                Enum.EasingDirection.Out, -- Easing direction
+                -1, -- Repeat indefinitely
+                true -- Reverses the tween
+            )
+            
+            local goal = {Position = targetPosition}
+            local tween = TweenService:Create(character.HumanoidRootPart, tweenInfo, goal)
+            tween:Play()
+        end
+        wait(1)  -- Adjust how often the teleportation happens (1 second interval)
+    end
+end
+
+-- Start the stabbing and teleporting
+spawn(stabContinuously)
+spawn(teleportToClosestPlayer)
