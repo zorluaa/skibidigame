@@ -45,18 +45,18 @@ local Player = game.Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
--- List of maps to check
+-- Corrected map names to match in-game names
 local maps = {
-    "Bank 2", "Bio Lab", "Factory", "Hospital 3", "Hotel 2", "House 2", 
-    "Mansion 2", "Mil Base", "Office 3", "Police Station", "Research Facility", "Workplace"
+    "Bank2", "BioLab", "Factory", "Hospital3", "Hotel2", "House2", 
+    "Mansion2", "MilBase", "Office3", "PoliceStation", "ResearchFacility", "Workplace"
 }
 
-local teleportEnabled = false -- Variable to track toggle state
+local teleportEnabled = false -- Toggle state
 
 -- Function to get all MainCoin instances from every map's CoinContainer
 local function getAllCoins()
     local coins = {}
-    
+
     for _, mapName in ipairs(maps) do
         local map = workspace:FindFirstChild(mapName)
         if map then
@@ -74,37 +74,29 @@ local function getAllCoins()
             end
         end
     end
-    
+
     return coins
 end
 
 -- Function to teleport smoothly to each coin
 local function teleportToCoins()
-    task.spawn(function() -- Runs in a separate thread to prevent freezing
-        while teleportEnabled do
-            local coins = getAllCoins()
+    while teleportEnabled do
+        local coins = getAllCoins()
+        
+        for _, coin in ipairs(coins) do
+            if not teleportEnabled then return end -- Stop if toggle is turned off
+            if HumanoidRootPart and coin then
+                local tweenInfo = TweenInfo.new(2.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+                local tween = TweenService:Create(HumanoidRootPart, tweenInfo, {CFrame = coin.CFrame + Vector3.new(0, 3, 0)})
+                tween:Play()
 
-            for _, coin in ipairs(coins) do
-                if not teleportEnabled then return end -- Stop if toggle is turned off
-                
-                if HumanoidRootPart and coin then
-                    local tweenInfo = TweenInfo.new(2.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-                    local tween = TweenService:Create(HumanoidRootPart, tweenInfo, {CFrame = coin.CFrame})
-                    tween:Play()
-                    
-                    task.wait(2.6) -- Wait for tween to finish
-                    
-                    -- Force final position to prevent getting stuck
-                    HumanoidRootPart.CFrame = coin.CFrame + Vector3.new(0, 3, 0) -- Slightly above the coin
-                    
-                    task.wait(2) -- Additional wait before next teleport
-                end
+                task.wait(3) -- Wait for teleport to complete
             end
         end
-    end)
+    end
 end
 
--- Toggle Integration
+-- Add Toggle to GUI
 local Toggle = Tab1:CreateToggle({
     Name = "Coin Teleport",
     CurrentValue = false,
@@ -116,5 +108,14 @@ local Toggle = Tab1:CreateToggle({
         end
     end,
 })
+
+
+
+
+
+
+
+
+
 
 
