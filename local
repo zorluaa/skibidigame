@@ -1,1 +1,115 @@
-print("zorissoskibidiitssorizzy")
+local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/SiriusSoftwareLtd/Rayfield/main/source.lua'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Void.lua ┃ MM2",
+   LoadingTitle = "Void.lua ┃ MM2",
+   LoadingSubtitle = "By xx1xx1x1x1",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = Voidlua, 
+      FileName = "Voidd"
+   },
+   Discord = {
+      Enabled = nil,
+      Invite = "8eKdgqWuwr", 
+      RememberJoins = true 
+   },
+   KeySystem = false, 
+   KeySettings = {
+      Title = "Void.lua",
+      Subtitle = "Key System",
+      Note = "Join the discord (https://discord.gg/8eKdgqWuwr) Last Updated 24/08/24",
+      FileName = "VoidKey",
+      SaveKey = true,
+      GrabKeyFromSite = true, 
+      Key = "ZorIs1"
+   }
+})
+
+local Tab1 = Window:CreateTab("Main",4483345998 )
+local Tab2 = Window:CreateTab("Aiming",4483345998 )
+local Tab3 = Window:CreateTab("Misc ", 4483345998)
+
+
+
+
+
+local Section1 = Tab1:CreateSection("Main")
+local Section2 = Tab2:CreateSection("Silent Aim")
+local Section3 = Tab3:CreateSection("Misc")
+
+
+
+local TweenService = game:GetService("TweenService")
+local Player = game.Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- List of maps to check
+local maps = {
+    "Bank 2", "Bio Lab", "Factory", "Hospital 3", "Hotel 2", "House 2", 
+    "Mansion 2", "Mil Base", "Office 3", "Police Station", "Research Facility", "Workplace"
+}
+
+local teleportEnabled = false -- Variable to track toggle state
+
+-- Function to get all MainCoin instances from every map's CoinContainer
+local function getAllCoins()
+    local coins = {}
+    
+    for _, mapName in ipairs(maps) do
+        local map = workspace:FindFirstChild(mapName)
+        if map then
+            local coinContainer = map:FindFirstChild("CoinContainer")
+            if coinContainer then
+                for _, coinServer in ipairs(coinContainer:GetChildren()) do
+                    local coinVisual = coinServer:FindFirstChild("CoinVisual")
+                    if coinVisual then
+                        local mainCoin = coinVisual:FindFirstChild("MainCoin")
+                        if mainCoin then
+                            table.insert(coins, mainCoin)
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    return coins
+end
+
+-- Function to teleport smoothly to each coin
+local function teleportToCoins()
+    while teleportEnabled do
+        local coins = getAllCoins()
+        
+        for _, coin in ipairs(coins) do
+            if not teleportEnabled then return end -- Stop if toggle is turned off
+            if HumanoidRootPart and coin then
+                local tweenInfo = TweenInfo.new(2.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+                local tween = TweenService:Create(HumanoidRootPart, tweenInfo, {CFrame = coin.CFrame})
+                tween:Play()
+                
+                task.wait(2.6) -- Wait for tween to finish
+                
+                -- Force final position to prevent getting stuck
+                HumanoidRootPart.CFrame = coin.CFrame + Vector3.new(0, 3, 0) -- Slightly above the coin
+                
+                task.wait(2) -- Additional wait before next teleport
+            end
+        end
+    end
+end
+
+-- Toggle Integration
+local Toggle = Tab1:CreateToggle({
+    Name = "Coin Teleport",
+    CurrentValue = false,
+    Flag = "Toggle1",
+    Callback = function(Value)
+        teleportEnabled = Value
+        if teleportEnabled then
+            teleportToCoins()
+        end
+    end,
+})
